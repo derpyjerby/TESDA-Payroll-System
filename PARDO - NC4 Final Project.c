@@ -133,7 +133,7 @@ void print_employee_record (EmployeeFile record)
 		printf("Employee Name: ");
 		puts(record.fullName);
 
-		printf("\nEmployee code of record: ");
+		printf("\nEmployee Code: ");
 		puts(record.employeeCode);		
 
 		switch(record.salaryLevel) {
