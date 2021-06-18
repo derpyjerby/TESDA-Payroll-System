@@ -14,8 +14,11 @@
 #define LEVEL_THREE_RATE 550.00
 #define MAX 30
 #define NAME_SIZE 20
-#define TIME_SIZE 5
-
+#define TIME_SIZE 6
+#define WORK_WEEK_SIZE 5
+#define YES "YES"
+#define NO "NO"
+#define COVERAGE_DATE_SIZE 16
 
 /* Structures */
 //typedef struct {
@@ -35,8 +38,12 @@ typedef struct {
 
 typedef struct {
 	char employeeCode[CODE_SIZE];
-	char timeIn [TIME_SIZE][TIME_SIZE];
-	char timeOut [TIME_SIZE][TIME_SIZE];	
+	char timeIn [WORK_WEEK_SIZE][TIME_SIZE];
+	char timeOut [WORK_WEEK_SIZE][TIME_SIZE];
+	bool isHoliday [WORK_WEEK_SIZE];
+	char overtimeIn [WORK_WEEK_SIZE][TIME_SIZE];
+	char overtimeOut [WORK_WEEK_SIZE][TIME_SIZE];
+	char coverageDate [COVERAGE_DATE_SIZE];
 }EmployeeTimeLog;
 
 typedef struct {
@@ -54,6 +61,7 @@ EmployeeFile employeeFiles[EMPLOYEE_FILE_SIZE] = {
 												   									};
 												   									  
 char* weekdays[DAY_SIZE] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
+
 /** Functions **/
 
 /* Main Functions */
@@ -70,6 +78,7 @@ float compute_net_income();
 
 /* File Handling */
 bool populate_employee_file(char *filename, EmployeeFile* fileContents);
+EmployeeTimeLog record_weekly_log(char *employeeCode);
 EmployeeFile* find_record(char *filename, char *employeeCode);
 bool read_file(char *filename);
 
@@ -77,6 +86,7 @@ int main ()
 {
 	char employeeCode[CODE_SIZE];
 	EmployeeFile* employeeRecord;
+	EmployeeTimeLog employee;
 	int i;
 //	char *token;
 
@@ -88,6 +98,7 @@ int main ()
 		or comment it out once the records have been loaded.								   		  *
 	
 	***************************************************************************************************/
+
 //	populate_employee_file("employee.txt", employeeFiles);
 	if ( read_file("employee.txt") ) {
 		
@@ -98,12 +109,34 @@ int main ()
 		employeeRecord = find_record("employee.txt", employeeCode);
 	
 		if ( employeeRecord != NULL ) {
+			
 			system("cls");
 			print_employee_record(*employeeRecord);
+			employee = record_weekly_log((*employeeRecord).employeeCode);
+			
+//			for(i = 0; i < WORK_WEEK_SIZE; i++) {
+//				printf("(Main)Employee Code: ");
+//				puts(employee.employeeCode);
+//				printf("\n(Main)Time in  %s: ", weekdays[i]);
+//				puts(employee.timeIn[i]);
+//				printf("\n(Main)Time out  %s: ", weekdays[i]);
+//				puts(employee.timeOut[i]);
+//				printf("\nIs %s a holiday : %d", weekdays[i], employee.isHoliday[i]);
+//				printf("\n(Main)Overtime in  %s: ", weekdays[i]);
+//				puts(employee.overtimeIn[i]);
+//				printf("\n(Main)Overtime out  %s: ", weekdays[i]);
+//				puts(employee.overtimeOut[i]);
+//				printf("\n(Main)Coverage date: ");
+//				puts(employee.coverageDate);
+//			}	
 		} else if ( islower(employeeCode[0]) ) {
+			
 			puts("\nEnsure that the \'A\' is in the correct case.");
+			
 		} else {
+			
 			puts("\nSorry. There was no record or input is invalid.");
+			
 		}
 
 	} else {
@@ -116,14 +149,19 @@ void generate_report (EmployeeFile record)
 {	
 	print_employee_record(record);
 	
-	printf("Date Covered: ");
-	puts(record.fullName);
 	
-	printf("\nTotal Number of Work Hours: ");
-	puts(record.employeeCode);		
-	
-	printf("\nRegular Income: ");
-	puts(record.employeeCode);	
+	puts("Date Covered: ");
+//	puts();
+	puts("\nTotal Number of Work Hours: ");
+//	puts();
+	puts("\nOvertime Hours: ");
+//	puts();	
+	puts("\nRegular Income: ");
+//	puts();
+	puts("\nOvertime Income: ");
+//	puts();
+	puts("\nGross Income: ");
+//	puts();
 }
 
 void print_employee_record (EmployeeFile record)
@@ -165,6 +203,7 @@ float compute_hourly_rate ()
 {
 	float hourlyRate;
 	
+	
 	return hourlyRate;	
 }
 
@@ -199,6 +238,7 @@ float computeNetIncome ()
 bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 {
 	bool isSuccessful = false;
+	char isHoliday[3];
 
 	FILE *filePointer = fopen(filename, "w");
 	
@@ -213,6 +253,52 @@ bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 	}
 		
 	return isSuccessful;
+}
+
+EmployeeTimeLog record_weekly_log(char *employeeCode)
+{
+//	bool isSuccessful = false;
+	int i;
+	EmployeeTimeLog log;
+	char isHoliday[sizeof(YES)];
+	
+	strcpy(log.employeeCode, employeeCode);
+
+//	FILE *filePointer = fopen(filename, "w");
+	for(i = 0; i < WORK_WEEK_SIZE; i++) {
+		printf("Enter the Time-in for %s: ", weekdays[i]);
+		gets(log.timeIn[i]);
+		printf("Enter the Time-out for %s: ", weekdays[i]);
+		gets(log.timeOut[i]);
+		
+		printf("Is %s a holiday? ", weekdays[i]);
+		gets(isHoliday);
+		strupr(isHoliday);
+		log.isHoliday[i] = strcmp(isHoliday, YES) == 0 ? true : false;
+		
+		printf("Enter the Overtime-in for %s: ", weekdays[i]);
+		gets(log.overtimeIn[i]);
+		printf("Enter the Overtime-out for %s: ", weekdays[i]);
+		gets(log.overtimeOut[i]);
+	}
+	
+	puts("Enter the coverage date of this payroll:");
+	gets(log.coverageDate);
+	
+	system("cls");
+	
+
+//	if ( NULL != filePointer ) {
+//
+//		fwrite(fileContents, sizeof(EmployeeFile), 4, filePointer);
+//		
+//		isSuccessful = true;
+//		fclose(filePointer);
+//	} else {
+//		printf("\nUnable to open file!");
+//	}
+		
+	return log;
 }
 
 EmployeeFile* find_record(char *filename, char *employeeCode)
