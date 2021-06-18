@@ -114,21 +114,21 @@ int main ()
 			print_employee_record(*employeeRecord);
 			employee = record_weekly_log((*employeeRecord).employeeCode);
 			
-//			for(i = 0; i < WORK_WEEK_SIZE; i++) {
-//				printf("(Main)Employee Code: ");
-//				puts(employee.employeeCode);
-//				printf("\n(Main)Time in  %s: ", weekdays[i]);
-//				puts(employee.timeIn[i]);
-//				printf("\n(Main)Time out  %s: ", weekdays[i]);
-//				puts(employee.timeOut[i]);
-//				printf("\nIs %s a holiday : %d", weekdays[i], employee.isHoliday[i]);
-//				printf("\n(Main)Overtime in  %s: ", weekdays[i]);
-//				puts(employee.overtimeIn[i]);
-//				printf("\n(Main)Overtime out  %s: ", weekdays[i]);
-//				puts(employee.overtimeOut[i]);
-//				printf("\n(Main)Coverage date: ");
-//				puts(employee.coverageDate);
-//			}	
+			for(i = 0; i < WORK_WEEK_SIZE; i++) {
+				printf("(Main)Employee Code: ");
+				puts(employee.employeeCode);
+				printf("\n(Main)Time in  %s: ", weekdays[i]);
+				puts(employee.timeIn[i]);
+				printf("\n(Main)Time out  %s: ", weekdays[i]);
+				puts(employee.timeOut[i]);
+				printf("\nIs %s a holiday : %d", weekdays[i], employee.isHoliday[i]);
+				printf("\n(Main)Overtime in  %s: ", weekdays[i]);
+				puts(employee.overtimeIn[i]);
+				printf("\n(Main)Overtime out  %s: ", weekdays[i]);
+				puts(employee.overtimeOut[i]);
+			}	
+				printf("\n(Main)Coverage date: ");
+				puts(employee.coverageDate);
 		} else if ( islower(employeeCode[0]) ) {
 			
 			puts("\nEnsure that the \'A\' is in the correct case.");
