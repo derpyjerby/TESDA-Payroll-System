@@ -91,6 +91,7 @@ int main ()
 //	populate_employee_file("employee.txt", employeeFiles);
 	if ( read_file("employee.txt") ) {
 		
+		puts("Sample change");
 		puts("TESDA Payroll System");
 		printf("Enter Employee Code: ");
 		gets(employeeCode);
