@@ -51,6 +51,12 @@ typedef struct {
 	int min[TIME_SIZE];
 }Time;
 
+typedef struct {
+	Time timeIn;
+	Time timeOut;
+	Time overtimeIn;
+	Time overtimeOut;
+}TimeLogs;
 
 //GLOBAL VARIABLES
 EmployeeFile employeeFiles[EMPLOYEE_FILE_SIZE] = { 
@@ -69,7 +75,7 @@ void print_employee_credentials (EmployeeFile record);
 void generate_report (EmployeeTimeLog record);
 
 /* Computations */
-int generate_work_hours(EmployeeTimeLog timeLog);
+TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
 float compute_hourly_rate();
 float compute_regular_income();
 float compute_overtime_income();
@@ -86,7 +92,8 @@ int main ()
 {
 	char employeeCode[CODE_SIZE];
 	EmployeeFile* employeeRecord;
-	EmployeeTimeLog employee;
+	EmployeeTimeLog employee;\
+	TimeLogs employeeTimeStamps;
 	int i;
 
 	/**************************************************************************************************
@@ -114,7 +121,8 @@ int main ()
 			print_employee_credentials(*employeeRecord);
 			employee = record_weekly_log((*employeeRecord));
 			
-			generate_work_hours(employee);
+			employeeTimeStamps = generate_work_hours(employee);
+
 //			system("cls");
 //			generate_report(employee);
 
@@ -182,9 +190,39 @@ void print_employee_credentials (EmployeeFile record)
 		printf("\n*************************************************\n\n");
 }
 
-int generate_work_hours (EmployeeTimeLog timeLog)
+TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 {
-	int workHours;
+	TimeLogs workHours;
+	int i;
+	char delimiter[] = ":";
+	char *hour;
+	char *minute;
+
+	for(i = 0; i < WORK_WEEK_SIZE; i++){
+		// Saving Time In of user into structure 
+		hour = strtok(timeLog.timeIn[i], delimiter);		
+		workHours.timeIn.hour[i] = atoi(hour);
+		minute = strtok(NULL, delimiter);
+		workHours.timeIn.min[i] = atoi(minute);
+		
+		// Saving Time Out of user into structure 
+		hour = strtok(timeLog.timeOut[i], delimiter);
+		workHours.timeOut.hour[i] = atoi(hour);
+		minute = strtok(NULL, delimiter);
+		workHours.timeOut.min[i] = atoi(minute);
+		
+		// Saving Overtime In of user into structure 
+		hour = strtok(timeLog.overtimeIn[i], delimiter);
+		workHours.overtimeIn.hour[i] = atoi(hour);	
+		minute = strtok(NULL, delimiter);
+		workHours.overtimeIn.min[i] = atoi(minute);
+		
+		// Saving Overtime Out of user into structure 
+		hour = strtok(timeLog.overtimeOut[i], delimiter);
+		workHours.overtimeOut.hour[i] = atoi(hour);
+		minute = strtok(NULL, delimiter);
+		workHours.overtimeOut.min[i] = atoi(minute);
+	}
 	
 	return workHours;
 }
@@ -275,16 +313,16 @@ EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 	gets(log.coverageDate);
 		
 
-	FILE *filePointer = fopen("dtr.txt", "a");
-	if ( NULL != filePointer ) {
-		
-		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
-		
-		puts("Successfully wrote to file.");
-		fclose(filePointer);
-	} else {
-		printf("\nUnable to open file!");
-	}
+//	FILE *filePointer = fopen("dtr.txt", "a");
+//	if ( NULL != filePointer ) {
+//		
+//		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
+//		
+//		puts("Successfully wrote to file.");
+//		fclose(filePointer);
+//	} else {
+//		printf("\nUnable to open file!");
+//	}
 		
 	return log;
 }
