@@ -37,7 +37,7 @@ typedef struct {
 }EmployeeFile;
 
 typedef struct {
-	char employeeCode[CODE_SIZE];
+	EmployeeFile credentials;
 	char timeIn [WORK_WEEK_SIZE][TIME_SIZE];
 	char timeOut [WORK_WEEK_SIZE][TIME_SIZE];
 	bool isHoliday [WORK_WEEK_SIZE];
@@ -47,8 +47,8 @@ typedef struct {
 }EmployeeTimeLog;
 
 typedef struct {
-	int hour;
-	int min;
+	int hour[TIME_SIZE];
+	int min[TIME_SIZE];
 }Time;
 
 
@@ -58,18 +58,18 @@ EmployeeFile employeeFiles[EMPLOYEE_FILE_SIZE] = {
 												   {"A02-0003","Peter Palabrica", 3}, 
 												   {"A02-0004","Anthony Cruz", 1}, 
 												   {"A02-0005","Emmie Tabada", 2} 
-												   									};
+												 									 };
 												   									  
 char* weekdays[DAY_SIZE] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Friday"};
 
 /** Functions **/
 
 /* Main Functions */
-void print_employee_record (EmployeeFile record);
-void generate_report (EmployeeFile record);
+void print_employee_credentials (EmployeeFile record);
+void generate_report (EmployeeTimeLog record);
 
 /* Computations */
-int compute_work_hours();
+int generate_work_hours(EmployeeTimeLog timeLog);
 float compute_hourly_rate();
 float compute_regular_income();
 float compute_overtime_income();
@@ -78,7 +78,7 @@ float compute_net_income();
 
 /* File Handling */
 bool populate_employee_file(char *filename, EmployeeFile* fileContents);
-EmployeeTimeLog record_weekly_log(char *employeeCode);
+EmployeeTimeLog record_weekly_log(EmployeeFile employee);
 EmployeeFile* find_record(char *filename, char *employeeCode);
 bool read_file(char *filename);
 
@@ -88,14 +88,14 @@ int main ()
 	EmployeeFile* employeeRecord;
 	EmployeeTimeLog employee;
 	int i;
-//	char *token;
 
 	/**************************************************************************************************
 	
 	*	Populates the employee.txt file with the employee records (code, full name, and salary level).*
 	
-	*	Execute the write_file function only during first time use. once finished, you may remove it 
-		or comment it out once the records have been loaded.								   		  *
+	*	Execute the write_file function only during first time use or if you do not have the 
+		employee.txt file in the directory of your project. once finished, you may remove it or comment 
+		it out once the records have been loaded.								   		  			  *
 	
 	***************************************************************************************************/
 
@@ -111,24 +111,13 @@ int main ()
 		if ( employeeRecord != NULL ) {
 			
 			system("cls");
-			print_employee_record(*employeeRecord);
-			employee = record_weekly_log((*employeeRecord).employeeCode);
+			print_employee_credentials(*employeeRecord);
+			employee = record_weekly_log((*employeeRecord));
 			
-			for(i = 0; i < WORK_WEEK_SIZE; i++) {
-				printf("(Main)Employee Code: ");
-				puts(employee.employeeCode);
-				printf("\n(Main)Time in  %s: ", weekdays[i]);
-				puts(employee.timeIn[i]);
-				printf("\n(Main)Time out  %s: ", weekdays[i]);
-				puts(employee.timeOut[i]);
-				printf("\nIs %s a holiday : %d", weekdays[i], employee.isHoliday[i]);
-				printf("\n(Main)Overtime in  %s: ", weekdays[i]);
-				puts(employee.overtimeIn[i]);
-				printf("\n(Main)Overtime out  %s: ", weekdays[i]);
-				puts(employee.overtimeOut[i]);
-			}	
-				printf("\n(Main)Coverage date: ");
-				puts(employee.coverageDate);
+			generate_work_hours(employee);
+//			system("cls");
+//			generate_report(employee);
+
 		} else if ( islower(employeeCode[0]) ) {
 			
 			puts("\nEnsure that the \'A\' is in the correct case.");
@@ -145,26 +134,27 @@ int main ()
 	return 0;
 }
 
-void generate_report (EmployeeFile record)
+void generate_report (EmployeeTimeLog record)
 {	
-	print_employee_record(record);
+	print_employee_credentials(record.credentials);
 	
 	
 	puts("Date Covered: ");
-//	puts();
+	puts(record.coverageDate);
 	puts("\nTotal Number of Work Hours: ");
-//	puts();
+
 	puts("\nOvertime Hours: ");
-//	puts();	
 	puts("\nRegular Income: ");
-//	puts();
 	puts("\nOvertime Income: ");
-//	puts();
 	puts("\nGross Income: ");
-//	puts();
+	puts("\nDeductions:");
+	puts("Tax: ");
+	puts("\nSSS: ");
+	puts("\nNet Income: ");
+	puts("*************************************************\n\n");
 }
 
-void print_employee_record (EmployeeFile record)
+void print_employee_credentials (EmployeeFile record)
 {
 		printf("*************************************************\n\n");
 		
@@ -192,7 +182,7 @@ void print_employee_record (EmployeeFile record)
 		printf("\n*************************************************\n\n");
 }
 
-int compute_work_hours ()
+int generate_work_hours (EmployeeTimeLog timeLog)
 {
 	int workHours;
 	
@@ -255,16 +245,15 @@ bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 	return isSuccessful;
 }
 
-EmployeeTimeLog record_weekly_log(char *employeeCode)
+EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 {
 //	bool isSuccessful = false;
 	int i;
 	EmployeeTimeLog log;
 	char isHoliday[sizeof(YES)];
 	
-	strcpy(log.employeeCode, employeeCode);
-
-//	FILE *filePointer = fopen(filename, "w");
+	log.credentials = employee;
+	
 	for(i = 0; i < WORK_WEEK_SIZE; i++) {
 		printf("Enter the Time-in for %s: ", weekdays[i]);
 		gets(log.timeIn[i]);
@@ -284,19 +273,18 @@ EmployeeTimeLog record_weekly_log(char *employeeCode)
 	
 	puts("Enter the coverage date of this payroll:");
 	gets(log.coverageDate);
-	
-	system("cls");
-	
+		
 
-//	if ( NULL != filePointer ) {
-//
-//		fwrite(fileContents, sizeof(EmployeeFile), 4, filePointer);
-//		
-//		isSuccessful = true;
-//		fclose(filePointer);
-//	} else {
-//		printf("\nUnable to open file!");
-//	}
+	FILE *filePointer = fopen("dtr.txt", "a");
+	if ( NULL != filePointer ) {
+		
+		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
+		
+		puts("Successfully wrote to file.");
+		fclose(filePointer);
+	} else {
+		printf("\nUnable to open file!");
+	}
 		
 	return log;
 }
