@@ -6,6 +6,7 @@
 #include<string.h>
 
 /* Macro Definitions */
+#define ALLOWANCE 500
 #define CODE_SIZE 9
 #define COVERAGE_DATE_SIZE 16
 #define DAY_SIZE 10
@@ -14,9 +15,11 @@
 #define LEVEL_TWO_HOURLY 56.25
 #define LEVEL_THREE_HOURLY 68.75
 #define LUNCH_BREAK_TIME 1
-#define MAX 30
+#define MAX_REG_WORK_HOURS 8
 #define NAME_SIZE 20
 #define NO "NO"
+#define REGULAR_END 17
+#define REGULAR_START 8
 #define TIME_SIZE 6
 #define WORK_WEEK_SIZE 5
 #define YES "YES"
@@ -77,9 +80,8 @@ void generate_report (EmployeeTimeLog record);
 
 /* Computations */
 TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
-float compute_hourly_rate();
-float compute_regular_income();
-float compute_overtime_income();
+float compute_regular_income(TimeLogs timeLogs, int salaryLevel);
+float compute_overtime_income(TimeLogs timeLogs);
 float compute_gross_income();
 float compute_net_income();
 
@@ -93,8 +95,9 @@ int main ()
 {
 	char employeeCode[CODE_SIZE];
 	EmployeeFile* employeeRecord;
-	EmployeeTimeLog employee;\
+	EmployeeTimeLog employee;
 	TimeLogs employeeTimeStamps;
+	float regularIncome, overtimeIncome, grossIncome, netIncome;
 	int i;
 
 	/**************************************************************************************************
@@ -115,7 +118,6 @@ int main ()
 		gets(employeeCode);
 		
 		employeeRecord = find_record("employee.txt", employeeCode);
-	
 		if ( employeeRecord != NULL ) {
 			
 			system("cls");
@@ -123,8 +125,9 @@ int main ()
 			employee = record_weekly_log((*employeeRecord));
 			
 			employeeTimeStamps = generate_work_hours(employee);
-			
 //			system("cls");
+			regularIncome = compute_regular_income(employeeTimeStamps, employee.credentials.salaryLevel);
+			
 //			generate_report(employee);
 
 		} else if ( islower(employeeCode[0]) ) {
@@ -144,7 +147,10 @@ int main ()
 }
 
 void generate_report (EmployeeTimeLog record)
-{	
+{
+	float regularIncome;
+	float overtimeIncome;
+	float grossIncome;
 	print_employee_credentials(record.credentials);
 	
 	
@@ -200,25 +206,25 @@ TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 	char *minute;
 
 	for(i = 0; i < WORK_WEEK_SIZE; i++){
-		// Saving Time In of user into structure 
+		// Converting Time In of user into integer
 		hour = strtok(timeLog.timeIn[i], delimiter);		
 		workHours.timeIn[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
 		workHours.timeIn[i].min = atoi(minute);
 		
-		// Saving Time Out of user into structure 
+		// Converting Time Out of user into integer 
 		hour = strtok(timeLog.timeOut[i], delimiter);
 		workHours.timeOut[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
 		workHours.timeOut[i].min = atoi(minute);
 		
-		// Saving Overtime In of user into structure 
+		// Converting Overtime In of user into integer
 		hour = strtok(timeLog.overtimeIn[i], delimiter);
 		workHours.overtimeIn[i].hour = atoi(hour);	
 		minute = strtok(NULL, delimiter);
 		workHours.overtimeIn[i].min = atoi(minute);
 		
-		// Saving Overtime Out of user into structure 
+		// Converting Overtime Out of user into integer
 		hour = strtok(timeLog.overtimeOut[i], delimiter);
 		workHours.overtimeOut[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
@@ -228,22 +234,53 @@ TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 	return workHours;
 }
 
-float compute_hourly_rate ()
-{
-	float hourlyRate;
-	
-	
-	return hourlyRate;	
-}
 
-float compute_regular_income ()
+float compute_regular_income(TimeLogs timeLogs, int salaryLevel)
 {
 	float regularIncome;
+	float totalHoursWorked = 0;
+	float hoursWorked[WORK_WEEK_SIZE] = {8,8,8,8,8};
+	float late = 0;
+	float undertime = 0;
+	int i;
 	
+	for(i = 0; i < WORK_WEEK_SIZE; i++){
+
+		if (timeLogs.timeIn[i].hour == 0 && timeLogs.timeIn[i].min == 0) {
+			hoursWorked[i] = 0;
+			continue;
+		}
+		if (timeLogs.timeIn[i].hour >= REGULAR_START && timeLogs.timeIn[i].min >= 0) {
+			late = timeLogs.timeIn[i].hour - REGULAR_START;
+			late += timeLogs.timeIn[i].min / 60.00;
+		} 
+		if (timeLogs.timeOut[i].hour <= REGULAR_END - 1) { //Checks hour before since 17 is on time anyway 
+			undertime += REGULAR_END - 1 - timeLogs.timeOut[i].hour;
+			undertime += timeLogs.timeOut[i].min / 60.00;
+		}
+		
+		hoursWorked[i] = MAX_REG_WORK_HOURS - ( undertime + late );
+		totalHoursWorked += hoursWorked[i];
+		
+		undertime = late = 0; //Resets the values of undertime and late to accommodate the next working day's values.
+	}
+		switch(salaryLevel) {
+			case 1 :
+				regularIncome = totalHoursWorked * LEVEL_ONE_HOURLY;
+				break;
+			case 2 :
+				regularIncome = totalHoursWorked * LEVEL_TWO_HOURLY;
+				break;
+			case 3 :
+				regularIncome = totalHoursWorked * LEVEL_THREE_HOURLY;
+				break;				
+		}
+		
+		printf("Regular income: Php %.2f\n\n", regularIncome);
 	return regularIncome;
 }
 
-float compute_overtime_income ()
+float compute_overtime_income (TimeLogs timeLogs)
 {
 	float overtimeIncome;
 	
@@ -291,8 +328,10 @@ EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 	EmployeeTimeLog log;
 	char isHoliday[sizeof(YES)];
 	
+	//Transfers the employee's code, full name, and salary level to the TimeLog being passed.
 	log.credentials = employee;
 	
+	//Input for the Timelog is entered by user.
 	for(i = 0; i < WORK_WEEK_SIZE; i++) {
 		printf("Enter the Time-in for %s: ", weekdays[i]);
 		gets(log.timeIn[i]);
@@ -339,11 +378,12 @@ EmployeeFile* find_record(char *filename, char *employeeCode)
 	if ( NULL == filePointer ) {
 		printf("\nFile is not available!");
 	} 
-	
+		// Finds the employee record with the passed employee code.
 		while(fread(&record, sizeof(EmployeeFile), 1, filePointer) && isSuccessful == false) 
 		{
+			// Compares employee code with the current record's code being read in the file.
 			if ( strcmp(record.employeeCode, employeeCode) == 0 ) {
-				*foundRecord = record;
+				*foundRecord = record; //foundRecord holds the record's address.
 				isSuccessful = true;
 				fclose(filePointer);		
 			}
