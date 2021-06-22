@@ -7,18 +7,19 @@
 
 /* Macro Definitions */
 #define CODE_SIZE 9
+#define COVERAGE_DATE_SIZE 16
 #define DAY_SIZE 10
 #define EMPLOYEE_FILE_SIZE 4
 #define LEVEL_ONE_RATE 380.00
 #define LEVEL_TWO_RATE 450.00
 #define LEVEL_THREE_RATE 550.00
+#define LUNCH_BREAK_TIME 1
 #define MAX 30
 #define NAME_SIZE 20
+#define NO "NO"
 #define TIME_SIZE 6
 #define WORK_WEEK_SIZE 5
 #define YES "YES"
-#define NO "NO"
-#define COVERAGE_DATE_SIZE 16
 
 /* Structures */
 //typedef struct {
@@ -47,15 +48,15 @@ typedef struct {
 }EmployeeTimeLog;
 
 typedef struct {
-	int hour[TIME_SIZE];
-	int min[TIME_SIZE];
+	int hour;
+	int min;
 }Time;
 
 typedef struct {
-	Time timeIn;
-	Time timeOut;
-	Time overtimeIn;
-	Time overtimeOut;
+	Time timeIn[WORK_WEEK_SIZE];
+	Time timeOut[WORK_WEEK_SIZE];
+	Time overtimeIn[WORK_WEEK_SIZE];
+	Time overtimeOut[WORK_WEEK_SIZE];
 }TimeLogs;
 
 //GLOBAL VARIABLES
@@ -122,7 +123,7 @@ int main ()
 			employee = record_weekly_log((*employeeRecord));
 			
 			employeeTimeStamps = generate_work_hours(employee);
-
+			
 //			system("cls");
 //			generate_report(employee);
 
@@ -150,7 +151,7 @@ void generate_report (EmployeeTimeLog record)
 	puts("Date Covered: ");
 	puts(record.coverageDate);
 	puts("\nTotal Number of Work Hours: ");
-
+	
 	puts("\nOvertime Hours: ");
 	puts("\nRegular Income: ");
 	puts("\nOvertime Income: ");
@@ -201,27 +202,27 @@ TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 	for(i = 0; i < WORK_WEEK_SIZE; i++){
 		// Saving Time In of user into structure 
 		hour = strtok(timeLog.timeIn[i], delimiter);		
-		workHours.timeIn.hour[i] = atoi(hour);
+		workHours.timeIn[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
-		workHours.timeIn.min[i] = atoi(minute);
+		workHours.timeIn[i].min = atoi(minute);
 		
 		// Saving Time Out of user into structure 
 		hour = strtok(timeLog.timeOut[i], delimiter);
-		workHours.timeOut.hour[i] = atoi(hour);
+		workHours.timeOut[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
-		workHours.timeOut.min[i] = atoi(minute);
+		workHours.timeOut[i].min = atoi(minute);
 		
 		// Saving Overtime In of user into structure 
 		hour = strtok(timeLog.overtimeIn[i], delimiter);
-		workHours.overtimeIn.hour[i] = atoi(hour);	
+		workHours.overtimeIn[i].hour = atoi(hour);	
 		minute = strtok(NULL, delimiter);
-		workHours.overtimeIn.min[i] = atoi(minute);
+		workHours.overtimeIn[i].min = atoi(minute);
 		
 		// Saving Overtime Out of user into structure 
 		hour = strtok(timeLog.overtimeOut[i], delimiter);
-		workHours.overtimeOut.hour[i] = atoi(hour);
+		workHours.overtimeOut[i].hour = atoi(hour);
 		minute = strtok(NULL, delimiter);
-		workHours.overtimeOut.min[i] = atoi(minute);
+		workHours.overtimeOut[i].min = atoi(minute);
 	}
 	
 	return workHours;
