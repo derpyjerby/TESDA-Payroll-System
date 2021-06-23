@@ -202,33 +202,32 @@ TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 	TimeLogs workHours;
 	int i;
 	char delimiter[] = ":";
-	char *hour;
-	char *minute;
+	char *timeToken;
 
 	for(i = 0; i < WORK_WEEK_SIZE; i++){
 		// Converting Time In of user into integer
-		hour = strtok(timeLog.timeIn[i], delimiter);		
-		workHours.timeIn[i].hour = atoi(hour);
-		minute = strtok(NULL, delimiter);
-		workHours.timeIn[i].min = atoi(minute);
+		timeToken = strtok(timeLog.timeIn[i], delimiter);		
+		workHours.timeIn[i].hour = atoi(timeToken);
+		timeToken = strtok(NULL, delimiter);
+		workHours.timeIn[i].min = atoi(timeToken);
 		
 		// Converting Time Out of user into integer 
-		hour = strtok(timeLog.timeOut[i], delimiter);
-		workHours.timeOut[i].hour = atoi(hour);
-		minute = strtok(NULL, delimiter);
-		workHours.timeOut[i].min = atoi(minute);
+		timeToken = strtok(timeLog.timeOut[i], delimiter);
+		workHours.timeOut[i].hour = atoi(timeToken);
+		timeToken = strtok(NULL, delimiter);
+		workHours.timeOut[i].min = atoi(timeToken);
 		
 		// Converting Overtime In of user into integer
-		hour = strtok(timeLog.overtimeIn[i], delimiter);
-		workHours.overtimeIn[i].hour = atoi(hour);	
-		minute = strtok(NULL, delimiter);
-		workHours.overtimeIn[i].min = atoi(minute);
+		timeToken = strtok(timeLog.overtimeIn[i], delimiter);
+		workHours.overtimeIn[i].hour = atoi(timeToken);	
+		timeToken = strtok(NULL, delimiter);
+		workHours.overtimeIn[i].min = atoi(timeToken);
 		
 		// Converting Overtime Out of user into integer
-		hour = strtok(timeLog.overtimeOut[i], delimiter);
-		workHours.overtimeOut[i].hour = atoi(hour);
-		minute = strtok(NULL, delimiter);
-		workHours.overtimeOut[i].min = atoi(minute);
+		timeToken = strtok(timeLog.overtimeOut[i], delimiter);
+		workHours.overtimeOut[i].hour = atoi(timeToken);
+		timeToken = strtok(NULL, delimiter);
+		workHours.overtimeOut[i].min = atoi(timeToken);
 	}
 	
 	return workHours;
