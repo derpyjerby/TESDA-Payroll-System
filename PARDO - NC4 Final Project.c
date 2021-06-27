@@ -288,10 +288,11 @@ incomeReport compute_regular_income(TimeLogs timeLogs, int salaryLevel, bool isH
 			} else { // Checks for undertime with minutes.
 				undertime += REGULAR_END - timeLogs.timeOut[i].hour - 1;
 			}
+				timeLogs.timeOut[i].min = 60 - timeLogs.timeOut[i].min;
 				undertime += timeLogs.timeOut[i].min / 60.00;
 		}
 		
-		hoursWorked[i] -= undertime + late;
+		hoursWorked[i] -= (undertime + late);
 		totalHoursWorked += hoursWorked[i];
 		undertime = late = 0;
 	}
