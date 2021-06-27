@@ -29,20 +29,12 @@
 #define OVERTIME_START 17
 #define REGULAR_END 17
 #define REGULAR_START 8
+#define TAX_DEDUCTION 0.1
 #define TIME_SIZE 6
 #define WORK_WEEK_SIZE 5
 #define YES "YES"
 
 /* Structures */
-//typedef struct {
-//	char fullName[NAME_SIZE];
-//	char employeeCode[CODE_SIZE];
-//	int salaryLevel;
-//	float salaryRate;
-//	char coverageDate[MAX];
-//	int workHours;
-//}EmployeeThird;
-
 typedef struct {
 	char employeeCode[CODE_SIZE];
 	char fullName[NAME_SIZE];
@@ -90,7 +82,7 @@ char* weekdays[DAY_SIZE] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 
 /* Main Functions */
 void print_employee_credentials (EmployeeFile record);
-void generate_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime);
+void generate_full_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime);
 
 /* Computations */
 TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
@@ -110,7 +102,7 @@ int main ()
 	EmployeeFile* employeeRecord;
 	EmployeeTimeLog employee;
 	TimeLogs employeeTimeStamps;
-	incomeReport regularIncomeReport, overtimeIncomeReport, grossIncome, netIncome;
+	incomeReport regularIncomeReport, overtimeIncomeReport;
 	int i;
 	/**************************************************************************************************
 	
@@ -135,21 +127,10 @@ int main ()
 			system("cls");
 			print_employee_credentials(*employeeRecord);
 			employee = record_weekly_log((*employeeRecord));
-//			puts("Main: ");
-//			printf("%d",employee.isHoliday[0]);
-//			printf("%d",employee.isHoliday[1]);
-//			printf("%d",employee.isHoliday[2]);
-//			printf("%d",employee.isHoliday[3]);
-//			printf("%d",employee.isHoliday[4]);
 			employeeTimeStamps = generate_work_hours(employee);
-//			system("cls");
 			regularIncomeReport = compute_regular_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
-			printf("regularIncome (main) = %.2f\n", regularIncomeReport.income);
-			printf("regularHours (main) = %.2f\n", regularIncomeReport.hoursWorked);
 			overtimeIncomeReport = compute_overtime_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
-			printf("overtimeIncome (main) = %.2f\n", overtimeIncomeReport.income);
-			printf("overtimeHours (main) = %.2f\n", overtimeIncomeReport.hoursWorked);
-			generate_report(employee);
+			generate_full_report(employee, regularIncomeReport, overtimeIncomeReport);
 
 		} else if ( islower(employeeCode[0]) ) {
 			
@@ -167,26 +148,45 @@ int main ()
 	return 0;
 }
 
-void generate_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime)
+void generate_full_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime)
 {
 	float grossIncome;
 	float netIncome;
+	float tax;
+	float sss;
 	
+	grossIncome = regular.income + overtime.income;
+	tax = TAX_DEDUCTION * grossIncome;
+	
+	switch (record.credentials.salaryLevel) {
+		case 1 :
+			sss = LEVEL_ONE_GSIS * grossIncome;
+			break;
+		case 2 :
+			sss = LEVEL_TWO_GSIS * grossIncome;
+			break;
+		case 3 :
+			sss = LEVEL_THREE_GSIS * grossIncome;
+			break;		
+	}
+	
+	netIncome = grossIncome - (tax + sss) + ALLOWANCE;
+	
+	system("cls");
 	print_employee_credentials(record.credentials);
 	
-	puts("Date Covered: ");
+	printf("Date Covered: ");
 	puts(record.coverageDate);
-	puts("\nTotal Number of Work Hours: ");
-	
-	puts("\nOvertime Hours: ");
-	puts("\nRegular Income: ");
-	puts("\nOvertime Income: ");
-	puts("\nGross Income: ");
+	printf("\nTotal Number of Work Hours: %.2f\n", regular.hoursWorked);
+	printf("\nOvertime Hours: %.2f\n", overtime.hoursWorked);
+	printf("\nRegular Income: Php %.2f\n", regular.income);
+	printf("\nOvertime Income: Php %.2f\n", overtime.income);
+	printf("\nGross Income: %.2f\n", grossIncome);
 	puts("\nDeductions:");
-	puts("Tax: ");
-	puts("\nSSS: ");
-	puts("\nNet Income: ");
-	puts("*************************************************\n\n");
+	printf("\nTax: %.2f\n", tax);
+	printf("\nSSS: %.2f", sss);
+	printf("\n\nNet Income: %.2f\n", netIncome);
+	puts("\n*************************************************\n\n");
 }
 
 void print_employee_credentials (EmployeeFile record)
@@ -389,10 +389,8 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 			if ( timeLogs.overtimeOut[i].hour > OVERTIME_START ) {
 				if ( timeLogs.overtimeOut[i].min <= OVERTIME_MINS && timeLogs.overtimeOut[i].min >= 0 ) {
 					timeLogs.overtimeOut[i].hour = OVERTIME_END - timeLogs.overtimeOut[i].hour;
-					printf(" <= >= = %d\n", timeLogs.overtimeOut[i].hour);
 				} else {
 					timeLogs.overtimeOut[i].hour = OVERTIME_END - timeLogs.overtimeOut[i].hour - 1;
-					printf(" else = %d\n", timeLogs.overtimeOut[i].hour);
 				}
 			} else {
 					timeLogs.overtimeOut[i].hour = 0;
@@ -401,22 +399,15 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 			// Checks the minutes first and converts it to the hourly percentage
 			if ( timeLogs.overtimeOut[i].min > OVERTIME_MINS && timeLogs.overtimeOut[i].min < 60) {
 				timeLogs.overtimeOut[i].min = 60 - timeLogs.overtimeOut[i].min;
-				printf("mins 1 = %d\n", timeLogs.overtimeOut[i].min);
 				timeLogs.overtimeOut[i].min += OVERTIME_MINS;
-				printf("mins 1 = %d\n", timeLogs.overtimeOut[i].min);
 			} else {
 				timeLogs.overtimeOut[i].min = OVERTIME_MINS - timeLogs.overtimeOut[i].min;
-				printf("mins 2 = %d\n", timeLogs.overtimeOut[i].min);
 			}
-				printf("division = %.2f\n", timeLogs.overtimeOut[i].min / 60.00);
-				undertime += timeLogs.overtimeOut[i].min / 60.00;
-				printf("under = %.2f\n", undertime);
-			
+			undertime += timeLogs.overtimeOut[i].min / 60.00;
 			hoursWorked[i] -=  undertime + late ;
 			undertime = late = 0;
 		}
 			totalHoursWorked += hoursWorked[i];
-			printf("%.2f\n", totalHoursWorked);
 	}
 		switch(salaryLevel) {
 			case 1 :
@@ -433,20 +424,6 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 		overtimeIncomeReport.hoursWorked = totalHoursWorked;
 	return overtimeIncomeReport;
 }
-
-//float compute_gross_income ()
-//{
-//	float grossIncome;
-//	
-//	return grossIncome;
-//}
-//
-//float computeNetIncome ()
-//{
-//	float netIncome;
-//	
-//	return netIncome;
-//}
 
 bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 {
