@@ -11,13 +11,22 @@
 #define COVERAGE_DATE_SIZE 16
 #define DAY_SIZE 10
 #define EMPLOYEE_FILE_SIZE 4
+#define HOLIDAY_INCREASE 1.1
 #define LEVEL_ONE_HOURLY 47.5
+#define LEVEL_ONE_GSIS 0.01
 #define LEVEL_TWO_HOURLY 56.25
+#define LEVEL_TWO_GSIS 0.015
 #define LEVEL_THREE_HOURLY 68.75
-#define LUNCH_BREAK_TIME 1
+#define LEVEL_THREE_GSIS 0.02
+#define LUNCH_BREAK_TIME 12
+#define MAX_OVT_WORK_HOURS 3
 #define MAX_REG_WORK_HOURS 8
 #define NAME_SIZE 20
 #define NO "NO"
+#define OVERTIME_END 20
+#define OVERTIME_INCREASE 1.1
+#define OVERTIME_MINS 30
+#define OVERTIME_START 17
 #define REGULAR_END 17
 #define REGULAR_START 8
 #define TIME_SIZE 6
@@ -56,6 +65,11 @@ typedef struct {
 }Time;
 
 typedef struct {
+	float hoursWorked;
+	float income;
+}incomeReport;
+
+typedef struct {
 	Time timeIn[WORK_WEEK_SIZE];
 	Time timeOut[WORK_WEEK_SIZE];
 	Time overtimeIn[WORK_WEEK_SIZE];
@@ -80,10 +94,9 @@ void generate_report (EmployeeTimeLog record);
 
 /* Computations */
 TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
-float compute_regular_income(TimeLogs timeLogs, int salaryLevel);
-float compute_overtime_income(TimeLogs timeLogs);
-float compute_gross_income();
-float compute_net_income();
+incomeReport compute_regular_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[]);
+incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[]);
+float compute_gross_income(float regularIncome, float overtimeIncome);
 
 /* File Handling */
 bool populate_employee_file(char *filename, EmployeeFile* fileContents);
@@ -97,9 +110,8 @@ int main ()
 	EmployeeFile* employeeRecord;
 	EmployeeTimeLog employee;
 	TimeLogs employeeTimeStamps;
-	float regularIncome, overtimeIncome, grossIncome, netIncome;
+	incomeReport regularIncomeReport, overtimeIncomeReport, grossIncome, netIncome;
 	int i;
-
 	/**************************************************************************************************
 	
 	*	Populates the employee.txt file with the employee records (code, full name, and salary level).*
@@ -109,7 +121,7 @@ int main ()
 		it out once the records have been loaded.								   		  			  *
 	
 	***************************************************************************************************/
-
+	
 //	populate_employee_file("employee.txt", employeeFiles);
 	if ( read_file("employee.txt") ) {
 		
@@ -123,11 +135,20 @@ int main ()
 			system("cls");
 			print_employee_credentials(*employeeRecord);
 			employee = record_weekly_log((*employeeRecord));
-			
+//			puts("Main: ");
+//			printf("%d",employee.isHoliday[0]);
+//			printf("%d",employee.isHoliday[1]);
+//			printf("%d",employee.isHoliday[2]);
+//			printf("%d",employee.isHoliday[3]);
+//			printf("%d",employee.isHoliday[4]);
 			employeeTimeStamps = generate_work_hours(employee);
 //			system("cls");
-			regularIncome = compute_regular_income(employeeTimeStamps, employee.credentials.salaryLevel);
-			
+			regularIncomeReport = compute_regular_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
+			printf("regularIncome (main) = %.2f\n", regularIncomeReport.income);
+			printf("regularHours (main) = %.2f\n", regularIncomeReport.hoursWorked);
+			overtimeIncomeReport = compute_overtime_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
+			printf("overtimeIncome (main) = %.2f\n", overtimeIncomeReport.income);
+			printf("overtimeHours (main) = %.2f\n", overtimeIncomeReport.hoursWorked);
 //			generate_report(employee);
 
 		} else if ( islower(employeeCode[0]) ) {
@@ -148,11 +169,12 @@ int main ()
 
 void generate_report (EmployeeTimeLog record)
 {
-	float regularIncome;
-	float overtimeIncome;
+	incomeReport regularIncome;
+	incomeReport overtimeIncome;
 	float grossIncome;
-	print_employee_credentials(record.credentials);
+	float netIncome;
 	
+	print_employee_credentials(record.credentials);
 	
 	puts("Date Covered: ");
 	puts(record.coverageDate);
@@ -234,71 +256,200 @@ TimeLogs generate_work_hours (EmployeeTimeLog timeLog)
 }
 
 
-float compute_regular_income(TimeLogs timeLogs, int salaryLevel)
+incomeReport compute_regular_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[])
 {
-	float regularIncome;
+	incomeReport regularIncomeReport;
 	float totalHoursWorked = 0;
-	float hoursWorked[WORK_WEEK_SIZE] = {8,8,8,8,8};
+	float hoursWorked[WORK_WEEK_SIZE] = {MAX_REG_WORK_HOURS, MAX_REG_WORK_HOURS, MAX_REG_WORK_HOURS, MAX_REG_WORK_HOURS, MAX_REG_WORK_HOURS};
 	float late = 0;
 	float undertime = 0;
 	int i;
+
 	
 	for(i = 0; i < WORK_WEEK_SIZE; i++){
-
-		if (timeLogs.timeIn[i].hour == 0 && timeLogs.timeIn[i].min == 0) {
+		// First checks if the employee entered that day or if the day was a holiday.
+		if (timeLogs.timeIn[i].hour == 0 && timeLogs.timeIn[i].min == 0 || isHoliday[i]) {
 			hoursWorked[i] = 0;
 			continue;
 		}
-		if (timeLogs.timeIn[i].hour >= REGULAR_START && timeLogs.timeIn[i].min >= 0) {
-			late = timeLogs.timeIn[i].hour - REGULAR_START;
+
+		// Computes for late by subtracting each part of the employee's time in with the set normal time in.
+		if ( timeLogs.timeIn[i].hour >= REGULAR_START && timeLogs.timeIn[i].min >= 0 ) { 
+			if ( timeLogs.timeIn[i].hour > LUNCH_BREAK_TIME ) { // Instance where employee enters after lunch
+				late = timeLogs.timeIn[i].hour - REGULAR_START - 1; // Disregards lunch break hour
+			} else {	
+				late = timeLogs.timeIn[i].hour - REGULAR_START;
+			}
 			late += timeLogs.timeIn[i].min / 60.00;
-		} 
-		if (timeLogs.timeOut[i].hour <= REGULAR_END - 1) { //Checks hour before since 17 is on time anyway 
-			undertime += REGULAR_END - 1 - timeLogs.timeOut[i].hour;
-			undertime += timeLogs.timeOut[i].min / 60.00;
+		}  
+		if ( timeLogs.timeOut[i].hour < REGULAR_END ) { // Checks hour before since 17 is normal timeout.
+			if ( timeLogs.timeOut[i].min == 0 ) { // Checks for undertime wihtout extra minutes
+				undertime += REGULAR_END - timeLogs.timeOut[i].hour;
+			} else { // Checks for undertime with minutes.
+				undertime += REGULAR_END - timeLogs.timeOut[i].hour - 1;
+			}
+				undertime += timeLogs.timeOut[i].min / 60.00;
 		}
 		
-		hoursWorked[i] = MAX_REG_WORK_HOURS - ( undertime + late );
+		hoursWorked[i] -= undertime + late;
 		totalHoursWorked += hoursWorked[i];
-		
-		undertime = late = 0; //Resets the values of undertime and late to accommodate the next working day's values.
+		undertime = late = 0;
 	}
+
+		
 		switch(salaryLevel) {
 			case 1 :
-				regularIncome = totalHoursWorked * LEVEL_ONE_HOURLY;
+				regularIncomeReport.income =  totalHoursWorked * LEVEL_ONE_HOURLY;
 				break;
 			case 2 :
-				regularIncome = totalHoursWorked * LEVEL_TWO_HOURLY;
+				regularIncomeReport.income =  totalHoursWorked * LEVEL_TWO_HOURLY;
 				break;
 			case 3 :
-				regularIncome = totalHoursWorked * LEVEL_THREE_HOURLY;
+				regularIncomeReport.income =  totalHoursWorked * LEVEL_THREE_HOURLY;
 				break;				
 		}
 		
-		printf("Regular income: Php %.2f\n\n", regularIncome);
-	return regularIncome;
+		regularIncomeReport.hoursWorked = totalHoursWorked;
+		
+	return regularIncomeReport;
 }
 
-float compute_overtime_income (TimeLogs timeLogs)
+incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[])
 {
-	float overtimeIncome;
+	incomeReport overtimeIncomeReport;
+	float totalHoursWorked = 0;
+	float undertime, late;
+//	float hoursWorked[WORK_WEEK_SIZE] = {MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS};
+	float hoursWorked[WORK_WEEK_SIZE] = {0};
+	int i;
 	
-	return overtimeIncome;
+	for(i = 0; i < WORK_WEEK_SIZE; i++){
+		// First checks if the day was a holiday.
+		if (isHoliday[i]) {
+			hoursWorked[i] = MAX_REG_WORK_HOURS;
+			// Checks if the employee entered despite holiday
+			if ( timeLogs.timeIn[i].hour == 0 && timeLogs.timeIn[i].min == 0 ) {
+				hoursWorked[i] = 0;
+				continue;
+			}
+			// Computes for late by subtracting each part of the employee's time in with the set normal time in.
+			if ( timeLogs.timeIn[i].hour >= REGULAR_START && timeLogs.timeIn[i].min >= 0 ) { 
+				if ( timeLogs.timeIn[i].hour > LUNCH_BREAK_TIME ) { // Instance where employee enters after lunch
+					late = timeLogs.timeIn[i].hour - REGULAR_START - 1; // Disregards lunch break hour
+				} else {	
+					late = timeLogs.timeIn[i].hour - REGULAR_START;
+				}
+				late += timeLogs.timeIn[i].min / 60.00;
+			}  
+			// Checks hour before since 17 is normal timeout.	
+			if ( timeLogs.timeOut[i].hour < REGULAR_END ) { 
+				// Checks for undertime without extra minutes
+				if ( timeLogs.timeOut[i].min == 0 ) { 
+					undertime += REGULAR_END - timeLogs.timeOut[i].hour;
+				} else { // Checks for undertime with minutes.
+					undertime += REGULAR_END - timeLogs.timeOut[i].hour - 1;
+					timeLogs.timeOut[i].min = 60.00 - timeLogs.timeOut[i].min;
+				}
+					undertime += timeLogs.timeOut[i].min / 60.00;
+			}
+			hoursWorked[i] -= undertime + late ;
+			undertime = late = 0; 
+		} else {
+			// First checks if the employee worked overtime that day.
+			if ( timeLogs.overtimeIn[i].hour == 0 && timeLogs.overtimeIn[i].min == 0 ) {
+				hoursWorked[i] = 0;
+				continue;
+			}
+			
+			// Computes for late by subtracting each part of the employee's overtime in with the set normal overtime in.
+			
+			// Checks the minutes first and converts it to hourly percentage.
+			if ( timeLogs.overtimeIn[i].min >= OVERTIME_MINS && timeLogs.overtimeIn[i].min < 60) {
+				
+				timeLogs.overtimeIn[i].min -= OVERTIME_MINS; 
+				timeLogs.overtimeIn[i].hour -= OVERTIME_START;
+
+			} else { // 0-29 mins
+				
+				timeLogs.overtimeIn[i].min += OVERTIME_MINS;
+				
+				if ( timeLogs.overtimeIn[i].hour > OVERTIME_START ) {;
+					timeLogs.overtimeIn[i].hour -= OVERTIME_START + 1;
+					printf("18-20 hour = %d\n", timeLogs.overtimeIn[i].hour);
+				} else {
+					timeLogs.overtimeIn[i].hour -= OVERTIME_START;
+				}
+			}
+				late += timeLogs.overtimeIn[i].min / 60.00;
+				late += timeLogs.overtimeIn[i].hour; 
+				
+			// Checks undertime based by subtracting each part of the overtime out with the set normal overtime out limit
+			
+			
+			// Hours
+			if ( timeLogs.overtimeOut[i].hour > OVERTIME_START ) {
+				if ( timeLogs.overtimeOut[i].min <= OVERTIME_MINS && timeLogs.overtimeOut[i].min >= 0 ) {
+					timeLogs.overtimeOut[i].hour = OVERTIME_END - timeLogs.overtimeOut[i].hour;
+					printf(" <= >= = %d\n", timeLogs.overtimeOut[i].hour);
+				} else {
+					timeLogs.overtimeOut[i].hour = OVERTIME_END - timeLogs.overtimeOut[i].hour - 1;
+					printf(" else = %d\n", timeLogs.overtimeOut[i].hour);
+				}
+			} else {
+					timeLogs.overtimeOut[i].hour = 0;
+			}
+				undertime += timeLogs.overtimeOut[i].hour;
+			// Checks the minutes first and converts it to the hourly percentage
+			if ( timeLogs.overtimeOut[i].min > OVERTIME_MINS && timeLogs.overtimeOut[i].min < 60) {
+				timeLogs.overtimeOut[i].min = 60 - timeLogs.overtimeOut[i].min;
+				printf("mins 1 = %d\n", timeLogs.overtimeOut[i].min);
+				timeLogs.overtimeOut[i].min += OVERTIME_MINS;
+				printf("mins 1 = %d\n", timeLogs.overtimeOut[i].min);
+			} else {
+				timeLogs.overtimeOut[i].min = OVERTIME_MINS - timeLogs.overtimeOut[i].min;
+				printf("mins 2 = %d\n", timeLogs.overtimeOut[i].min);
+			}
+				printf("division = %.2f\n", timeLogs.overtimeOut[i].min / 60.00);
+				undertime += timeLogs.overtimeOut[i].min / 60.00;
+				printf("under = %.2f\n", undertime);
+			
+			hoursWorked[i] -= ( undertime + late );
+			undertime = late = 0;
+		}
+			totalHoursWorked += hoursWorked[i];
+			printf("%.2f\n", totalHoursWorked);
+	}
+		switch(salaryLevel) {
+			case 1 :
+				overtimeIncomeReport.income = totalHoursWorked * LEVEL_ONE_HOURLY * OVERTIME_INCREASE;
+				break;
+			case 2 :
+				overtimeIncomeReport.income = totalHoursWorked * LEVEL_TWO_HOURLY * OVERTIME_INCREASE;
+				break;
+			case 3 :
+				overtimeIncomeReport.income = totalHoursWorked * LEVEL_THREE_HOURLY * OVERTIME_INCREASE;
+				break;				
+		}
+		
+//		printf("Overtime income: Php %.2f\n\n", overtimeIncome);
+
+		overtimeIncomeReport.hoursWorked = totalHoursWorked;
+	return overtimeIncomeReport;
 }
 
-float compute_gross_income ()
-{
-	float grossIncome;
-	
-	return grossIncome;
-}
-
-float computeNetIncome ()
-{
-	float netIncome;
-	
-	return netIncome;
-}
+//float compute_gross_income ()
+//{
+//	float grossIncome;
+//	
+//	return grossIncome;
+//}
+//
+//float computeNetIncome ()
+//{
+//	float netIncome;
+//	
+//	return netIncome;
+//}
 
 bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 {
@@ -329,25 +480,22 @@ EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 	
 	//Transfers the employee's code, full name, and salary level to the TimeLog being passed.
 	log.credentials = employee;
-	
 	//Input for the Timelog is entered by user.
 	for(i = 0; i < WORK_WEEK_SIZE; i++) {
 		printf("Enter the Time-in for %s: ", weekdays[i]);
 		gets(log.timeIn[i]);
 		printf("Enter the Time-out for %s: ", weekdays[i]);
 		gets(log.timeOut[i]);
-		
 		printf("Is %s a holiday? ", weekdays[i]);
 		gets(isHoliday);
 		strupr(isHoliday);
 		log.isHoliday[i] = strcmp(isHoliday, YES) == 0 ? true : false;
-		
 		printf("Enter the Overtime-in for %s: ", weekdays[i]);
 		gets(log.overtimeIn[i]);
 		printf("Enter the Overtime-out for %s: ", weekdays[i]);
 		gets(log.overtimeOut[i]);
-	}
-	
+	}		
+		
 	puts("Enter the coverage date of this payroll:");
 	gets(log.coverageDate);
 		
