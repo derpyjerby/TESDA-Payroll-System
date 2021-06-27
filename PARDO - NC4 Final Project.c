@@ -90,7 +90,7 @@ char* weekdays[DAY_SIZE] = {"Monday", "Tuesday", "Wednesday", "Thursday", "Frida
 
 /* Main Functions */
 void print_employee_credentials (EmployeeFile record);
-void generate_report (EmployeeTimeLog record);
+void generate_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime);
 
 /* Computations */
 TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
@@ -149,7 +149,7 @@ int main ()
 			overtimeIncomeReport = compute_overtime_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
 			printf("overtimeIncome (main) = %.2f\n", overtimeIncomeReport.income);
 			printf("overtimeHours (main) = %.2f\n", overtimeIncomeReport.hoursWorked);
-//			generate_report(employee);
+			generate_report(employee);
 
 		} else if ( islower(employeeCode[0]) ) {
 			
@@ -167,10 +167,8 @@ int main ()
 	return 0;
 }
 
-void generate_report (EmployeeTimeLog record)
+void generate_report (EmployeeTimeLog record, incomeReport regular, incomeReport overtime)
 {
-	incomeReport regularIncome;
-	incomeReport overtimeIncome;
 	float grossIncome;
 	float netIncome;
 	
@@ -320,8 +318,8 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 	incomeReport overtimeIncomeReport;
 	float totalHoursWorked = 0;
 	float undertime, late;
-//	float hoursWorked[WORK_WEEK_SIZE] = {MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS};
-	float hoursWorked[WORK_WEEK_SIZE] = {0};
+	float hoursWorked[WORK_WEEK_SIZE] = {MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS, MAX_OVT_WORK_HOURS};
+//	float hoursWorked[WORK_WEEK_SIZE] = {0};
 	int i;
 	
 	for(i = 0; i < WORK_WEEK_SIZE; i++){
@@ -414,7 +412,7 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 				undertime += timeLogs.overtimeOut[i].min / 60.00;
 				printf("under = %.2f\n", undertime);
 			
-			hoursWorked[i] -= ( undertime + late );
+			hoursWorked[i] -=  undertime + late ;
 			undertime = late = 0;
 		}
 			totalHoursWorked += hoursWorked[i];
@@ -431,8 +429,6 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 				overtimeIncomeReport.income = totalHoursWorked * LEVEL_THREE_HOURLY * OVERTIME_INCREASE;
 				break;				
 		}
-		
-//		printf("Overtime income: Php %.2f\n\n", overtimeIncome);
 
 		overtimeIncomeReport.hoursWorked = totalHoursWorked;
 	return overtimeIncomeReport;
