@@ -413,7 +413,7 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 		}
 			totalHoursWorked += hoursWorked[i];
 	}
-		switch(salaryLevel) {
+		switch(salaryLevel) { // Bases salary level from the passed salary level (from the employee.)
 			case 1 :
 				overtimeIncomeReport.income = totalHoursWorked * LEVEL_ONE_HOURLY * OVERTIME_INCREASE;
 				break;
@@ -437,7 +437,7 @@ bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 	FILE *filePointer = fopen(filename, "w");
 	
 	if ( NULL != filePointer ) {
-
+		// Loads all four instances of employees found in project documentation.
 		fwrite(fileContents, sizeof(EmployeeFile), 4, filePointer);
 		
 		isSuccessful = true;
@@ -493,14 +493,14 @@ EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 			i++;
 		}
 		
-		if ( isSuccessful == false ) {
+		if ( isSuccessful == false ) { // Reads file but does not find instance of the employee's daily time record.
 			filePointer = fopen("dtr.txt", "a");
 			puts("Appending to file new record.");
 			fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
 		}
 		
 		fclose(filePointer);
-	} else { // If it does not.
+	} else { // If file does not.
 		filePointer = fopen("dtr.txt", "w");
 		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
 		puts("No file found. Making new instance of \"dtr.txt\" on current directory.");
