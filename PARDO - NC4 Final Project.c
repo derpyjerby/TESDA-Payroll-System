@@ -88,7 +88,6 @@ void generate_full_report (EmployeeTimeLog record, incomeReport regular, incomeR
 TimeLogs generate_work_hours(EmployeeTimeLog timeLog);
 incomeReport compute_regular_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[]);
 incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool isHoliday[]);
-float compute_gross_income(float regularIncome, float overtimeIncome);
 
 /* File Handling */
 bool populate_employee_file(char *filename, EmployeeFile* fileContents);
@@ -103,18 +102,17 @@ int main ()
 	EmployeeTimeLog employee;
 	TimeLogs employeeTimeStamps;
 	incomeReport regularIncomeReport, overtimeIncomeReport;
-	int i;
 	/**************************************************************************************************
 	
 	*	Populates the employee.txt file with the employee records (code, full name, and salary level).*
 	
-	*	Execute the write_file function only during first time use or if you do not have the 
+	*	Execute the populate_employee_file function only during first time use or if you do not have the 
 		employee.txt file in the directory of your project. once finished, you may remove it or comment 
 		it out once the records have been loaded.								   		  			  *
 	
 	***************************************************************************************************/
 	
-//	populate_employee_file("employee.txt", employeeFiles);
+	populate_employee_file("employee.txt", employeeFiles);
 	if ( read_file("employee.txt") ) {
 		
 		puts("TESDA Payroll System");
@@ -122,14 +120,20 @@ int main ()
 		gets(employeeCode);
 		
 		employeeRecord = find_record("employee.txt", employeeCode);
+		
 		if ( employeeRecord != NULL ) {
 			
 			system("cls");
 			print_employee_credentials(*employeeRecord);
+			
 			employee = record_weekly_log((*employeeRecord));
+			
 			employeeTimeStamps = generate_work_hours(employee);
+			
 			regularIncomeReport = compute_regular_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
+			
 			overtimeIncomeReport = compute_overtime_income(employeeTimeStamps, employee.credentials.salaryLevel, employee.isHoliday);
+			
 			generate_full_report(employee, regularIncomeReport, overtimeIncomeReport);
 
 		} else if ( islower(employeeCode[0]) ) {
@@ -177,7 +181,7 @@ void generate_full_report (EmployeeTimeLog record, incomeReport regular, incomeR
 	
 	printf("Date Covered: ");
 	puts(record.coverageDate);
-	printf("\nTotal Number of Work Hours: %.2f\n", regular.hoursWorked);
+	printf("\nRegular Work Hours: %.2f\n", regular.hoursWorked);
 	printf("\nOvertime Hours: %.2f\n", overtime.hoursWorked);
 	printf("\nRegular Income: Php %.2f\n", regular.income);
 	printf("\nOvertime Income: Php %.2f\n", overtime.income);
@@ -185,7 +189,7 @@ void generate_full_report (EmployeeTimeLog record, incomeReport regular, incomeR
 	puts("\nDeductions:");
 	printf("\nTax: %.2f\n", tax);
 	printf("\nSSS: %.2f", sss);
-	printf("\n\nNet Income: %.2f\n", netIncome);
+	printf("\n\nNet Income (inclusive of Php %d allowance): %.2f\n", ALLOWANCE, netIncome);
 	puts("\n*************************************************\n\n");
 }
 
@@ -428,7 +432,7 @@ incomeReport compute_overtime_income(TimeLogs timeLogs, int salaryLevel, bool is
 bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 {
 	bool isSuccessful = false;
-	char isHoliday[3];
+	char isHoliday[sizeof(YES)];
 
 	FILE *filePointer = fopen(filename, "w");
 	
@@ -447,9 +451,9 @@ bool populate_employee_file(char *filename, EmployeeFile* fileContents)
 
 EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 {
-//	bool isSuccessful = false;
+	bool isSuccessful = false;
 	int i;
-	EmployeeTimeLog log;
+	EmployeeTimeLog log, temp;
 	char isHoliday[sizeof(YES)];
 	
 	//Transfers the employee's code, full name, and salary level to the TimeLog being passed.
@@ -469,21 +473,38 @@ EmployeeTimeLog record_weekly_log(EmployeeFile employee)
 		printf("Enter the Overtime-out for %s: ", weekdays[i]);
 		gets(log.overtimeOut[i]);
 	}		
-		
+	fflush(stdin);
 	puts("Enter the coverage date of this payroll:");
 	gets(log.coverageDate);
-		
 
-//	FILE *filePointer = fopen("dtr.txt", "a");
-//	if ( NULL != filePointer ) {
-//		
-//		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
-//		
-//		puts("Successfully wrote to file.");
-//		fclose(filePointer);
-//	} else {
-//		printf("\nUnable to open file!");
-//	}
+	FILE *filePointer = fopen("dtr.txt", "r+");
+	
+	if ( NULL != filePointer ) { // If file exists.
+		i = 0;
+		while(fread(&temp, sizeof(EmployeeTimeLog), 1, filePointer) && isSuccessful == false) 
+		{
+			// Compares employee code with the current record's code being read in the file.
+			if ( strcmp(temp.credentials.employeeCode, employee.employeeCode) == 0 ) {
+				isSuccessful = true;
+				fseek(filePointer, sizeof(EmployeeTimeLog) * i, SEEK_SET);
+				fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
+				fclose(filePointer);		
+			}
+			i++;
+		}
+		
+		if ( isSuccessful == false ) {
+			filePointer = fopen("dtr.txt", "a");
+			puts("Appending to file new record.");
+			fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
+		}
+		
+		fclose(filePointer);
+	} else { // If it does not.
+		filePointer = fopen("dtr.txt", "w");
+		fwrite(&log, sizeof(EmployeeTimeLog), 1, filePointer);
+		puts("No file found. Making new instance of \"dtr.txt\" on current directory.");
+	}
 		
 	return log;
 }
